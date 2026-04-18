@@ -590,7 +590,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--only", default="", help="Fire only these candidates. Comma-separated 1-based indices and/or ranges (e.g. '80-84' or '3,17,81-84').")
     ap.add_argument("--confirm", action="store_true", help="After each fire, prompt [y/N/q] for whether the TV reacted.")
     ap.add_argument("--remote", default="", help="Path to a single .ir file (absolute, or relative to --repo). Switches to single-remote mode.")
-    ap.add_argument("--button", default="", help="With --remote: fire just this button by name (case-insensitive).")
+    ap.add_argument("--button", default="", help="With --remote: fire these buttons in order. Comma-separated, case-insensitive (e.g. 'Input,Down,Ok').")
+    ap.add_argument("--button-gap", type=float, default=0.4, help="Seconds between sequential --button presses (default: 0.4).")
     ap.add_argument("--list", action="store_true", help="With --remote: print the button list and exit.")
     args = ap.parse_args(argv)
     if args.remote:
@@ -621,29 +622,42 @@ def run_remote(args: argparse.Namespace) -> int:
                 detail = f"RAW        {e.frequency} Hz  {len(e.data_us)} pulses"
             print(f"  {e.name:<20} {detail}")
         return 0
-    target = args.button.strip().lower()
-    matches = [e for e in entries if e.name.lower() == target]
-    if not matches:
-        print(f"ERROR: no button named {args.button!r} in {path}", file=sys.stderr)
-        print("Available:", ", ".join(sorted({e.name for e in entries})), file=sys.stderr)
-        return 1
-    entry = matches[0]
-    packet = build_packet(entry)
-    if packet is None:
-        print(f"ERROR: could not encode {entry.protocol} for button {entry.name!r}", file=sys.stderr)
-        return 1
+    names = [n.strip() for n in args.button.split(",") if n.strip()]
+    by_name = {e.name.lower(): e for e in entries}
+    sequence: list[Entry] = []
+    for n in names:
+        e = by_name.get(n.lower())
+        if e is None:
+            print(f"ERROR: no button named {n!r} in {path}", file=sys.stderr)
+            print("Available:", ", ".join(sorted({x.name for x in entries})), file=sys.stderr)
+            return 1
+        sequence.append(e)
+
+    packets: list[tuple[Entry, bytes]] = []
+    for e in sequence:
+        pkt = build_packet(e)
+        if pkt is None:
+            print(f"ERROR: could not encode {e.protocol} for button {e.name!r}", file=sys.stderr)
+            return 1
+        packets.append((e, pkt))
+
     if args.dry_run:
-        print(f"DRY-RUN: would fire {entry.name} ({entry.protocol}) {args.repeats}x")
-        print(f"  b64: {base64.b64encode(packet).decode()}")
+        for e, pkt in packets:
+            print(f"DRY-RUN: would fire {e.name} ({e.protocol}) {args.repeats}x")
+            print(f"  b64: {base64.b64encode(pkt).decode()}")
         return 0
+
     print(f"Connecting to Broadlink at {args.ip} ...")
     dev = connect_broadlink(args.ip)
     print(f"Connected: {type(dev).__name__} host={dev.host[0]}")
-    for r in range(args.repeats):
-        dev.send_data(packet)
-        if r + 1 < args.repeats:
-            time.sleep(args.repeat_gap)
-    print(f"Fired {entry.name} ({entry.protocol} addr={' '.join(f'{b:02X}' for b in entry.address)} cmd={' '.join(f'{b:02X}' for b in entry.command)}) x{args.repeats}")
+    for i, (e, pkt) in enumerate(packets):
+        for r in range(args.repeats):
+            dev.send_data(pkt)
+            if r + 1 < args.repeats:
+                time.sleep(args.repeat_gap)
+        print(f"Fired {e.name} ({e.protocol} addr={' '.join(f'{b:02X}' for b in e.address)} cmd={' '.join(f'{b:02X}' for b in e.command)}) x{args.repeats}")
+        if i + 1 < len(packets):
+            time.sleep(args.button_gap)
     return 0
 
 
