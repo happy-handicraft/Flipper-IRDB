@@ -12,10 +12,11 @@
 # indent one more level.
 #
 # --- HA SYNTAX VERSION ---
-# Uses `action:` (HA 2024.8+ syntax, replacing the older `service:`).
-# If you're on HA < 2024.8, rename `action:` -> `service:` in each
-# sequence step. Both still work in 2024.x but only `action:` is
-# future-proof.
+# Uses `service:` inside sequence steps. HA 2024.8+ also accepts
+# `action:` as the preferred name (both work at runtime), but some
+# VS Code / Studio Code Server schema validators lag behind and emit
+# DisallowedExtraPropWarning on `action:`. `service:` is universally
+# accepted by both old and new tooling.
 #
 # entity_id is `remote.IR` exactly (matches the device as named in
 # this HA install).
@@ -28,7 +29,7 @@ tv_power:
   alias: "TV: Power"
   icon: mdi:power
   sequence:
-    - action: remote.send_command
+    - service: remote.send_command
       target:
         entity_id: remote.IR
       data:
@@ -38,7 +39,7 @@ tv_source_up:
   alias: "TV: Source list - Up"
   icon: mdi:menu-up
   sequence:
-    - action: remote.send_command
+    - service: remote.send_command
       target:
         entity_id: remote.IR
       data:
@@ -48,7 +49,7 @@ tv_source_down:
   alias: "TV: Source list - Down"
   icon: mdi:menu-down
   sequence:
-    - action: remote.send_command
+    - service: remote.send_command
       target:
         entity_id: remote.IR
       data:
