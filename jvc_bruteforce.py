@@ -589,8 +589,62 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="Parse, encode, and log but don't transmit.")
     ap.add_argument("--only", default="", help="Fire only these candidates. Comma-separated 1-based indices and/or ranges (e.g. '80-84' or '3,17,81-84').")
     ap.add_argument("--confirm", action="store_true", help="After each fire, prompt [y/N/q] for whether the TV reacted.")
+    ap.add_argument("--remote", default="", help="Path to a single .ir file (absolute, or relative to --repo). Switches to single-remote mode.")
+    ap.add_argument("--button", default="", help="With --remote: fire just this button by name (case-insensitive).")
+    ap.add_argument("--list", action="store_true", help="With --remote: print the button list and exit.")
     args = ap.parse_args(argv)
+    if args.remote:
+        return run_remote(args)
     return run_sweep(args)
+
+
+def run_remote(args: argparse.Namespace) -> int:
+    path = args.remote
+    if not os.path.isabs(path):
+        for candidate in (os.path.join(args.repo, path), os.path.join(os.path.dirname(args.repo), path)):
+            if os.path.exists(candidate):
+                path = candidate
+                break
+    if not os.path.exists(path):
+        print(f"ERROR: remote file not found: {args.remote}", file=sys.stderr)
+        return 1
+    entries = parse_file(path, os.path.dirname(path))
+    if not entries:
+        print(f"ERROR: no entries parsed from {path}", file=sys.stderr)
+        return 1
+    if args.list or not args.button:
+        print(f"{path}: {len(entries)} buttons")
+        for e in entries:
+            if e.type == "parsed":
+                detail = f"{e.protocol:<10} addr={' '.join(f'{b:02X}' for b in e.address)}  cmd={' '.join(f'{b:02X}' for b in e.command)}"
+            else:
+                detail = f"RAW        {e.frequency} Hz  {len(e.data_us)} pulses"
+            print(f"  {e.name:<20} {detail}")
+        return 0
+    target = args.button.strip().lower()
+    matches = [e for e in entries if e.name.lower() == target]
+    if not matches:
+        print(f"ERROR: no button named {args.button!r} in {path}", file=sys.stderr)
+        print("Available:", ", ".join(sorted({e.name for e in entries})), file=sys.stderr)
+        return 1
+    entry = matches[0]
+    packet = build_packet(entry)
+    if packet is None:
+        print(f"ERROR: could not encode {entry.protocol} for button {entry.name!r}", file=sys.stderr)
+        return 1
+    if args.dry_run:
+        print(f"DRY-RUN: would fire {entry.name} ({entry.protocol}) {args.repeats}x")
+        print(f"  b64: {base64.b64encode(packet).decode()}")
+        return 0
+    print(f"Connecting to Broadlink at {args.ip} ...")
+    dev = connect_broadlink(args.ip)
+    print(f"Connected: {type(dev).__name__} host={dev.host[0]}")
+    for r in range(args.repeats):
+        dev.send_data(packet)
+        if r + 1 < args.repeats:
+            time.sleep(args.repeat_gap)
+    print(f"Fired {entry.name} ({entry.protocol} addr={' '.join(f'{b:02X}' for b in entry.address)} cmd={' '.join(f'{b:02X}' for b in entry.command)}) x{args.repeats}")
+    return 0
 
 
 if __name__ == "__main__":
