@@ -18,8 +18,11 @@
 # DisallowedExtraPropWarning on `action:`. `service:` is universally
 # accepted by both old and new tooling.
 #
-# entity_id is `remote.IR` exactly (matches the device as named in
-# this HA install).
+# entity_id is `remote.zhi_neng_yao_kong_ir` — the auto-generated id
+# for this Broadlink RM4 Mini (the "zhi neng yao kong" part is the
+# Chinese manufacturer name HA pulled during discovery). You can
+# rename this in Settings -> Devices & services -> Broadlink if you
+# want a friendlier id; just update the value below to match.
 #
 # Regenerate any b64 string with:
 #   ./jvc_bruteforce.py --remote Strong/Strong_RCU-Z400N.ir \
@@ -31,7 +34,7 @@ tv_power:
   sequence:
     - service: remote.send_command
       target:
-        entity_id: remote.IR
+        entity_id: remote.zhi_neng_yao_kong_ir
       data:
         command: "b64:JgBKAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERERERMxEzETMRERERERERMxEzERERERERETMRMxEzEQAEwg0F"
 
@@ -41,7 +44,7 @@ tv_source_up:
   sequence:
     - service: remote.send_command
       target:
-        entity_id: remote.IR
+        entity_id: remote.zhi_neng_yao_kong_ir
       data:
         command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzEREREREzETMREREzEREREREzETMRERERETMREREzEQAEwg0F"
 
@@ -51,6 +54,6 @@ tv_source_down:
   sequence:
     - service: remote.send_command
       target:
-        entity_id: remote.IR
+        entity_id: remote.zhi_neng_yao_kong_ir
       data:
         command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzERERERERETMREREzEREREREzETMRMxERETMREREzEQAEwg0F"
