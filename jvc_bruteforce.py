@@ -41,7 +41,7 @@ from typing import Iterable
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_REPO_ROOT = "/home/user/Flipper-IRDB/TVs"
+DEFAULT_REPO_ROOT = str(pathlib.Path(__file__).resolve().parent / "TVs")
 DEFAULT_RM_IP = "10.0.0.36"
 DEFAULT_DELAY = 2.5
 DEFAULT_REPEATS = 2
