@@ -346,55 +346,68 @@ class Candidate:
     detail: str                  # protocol + addr + cmd detail
 
 
-def build_packet(entry: Entry) -> bytes | None:
+def entry_to_pulses(entry: Entry) -> list[int] | None:
     try:
         if entry.type == "raw":
-            return pulses_to_broadlink(encode_raw(entry.data_us))
+            return encode_raw(entry.data_us)
         proto = entry.protocol
+        a0 = entry.address[0] if entry.address else 0
+        c0 = entry.command[0] if entry.command else 0
         if proto == "NEC":
-            addr = entry.address[0] if entry.address else 0
-            cmd = entry.command[0] if entry.command else 0
-            return pulses_to_broadlink(encode_nec(addr, cmd))
+            return encode_nec(a0, c0)
         if proto == "NECext":
             al = entry.address[0] if len(entry.address) > 0 else 0
             ah = entry.address[1] if len(entry.address) > 1 else 0
             cl = entry.command[0] if len(entry.command) > 0 else 0
             ch = entry.command[1] if len(entry.command) > 1 else None
-            return pulses_to_broadlink(encode_necext(al, ah, cl, ch))
-        if proto in ("NEC42",):
-            return pulses_to_broadlink(encode_nec42(entry.address[0] if entry.address else 0,
-                                                   entry.command[0] if entry.command else 0, ext=False))
-        if proto in ("NEC42ext",):
-            return pulses_to_broadlink(encode_nec42(entry.address[0] if entry.address else 0,
-                                                   entry.command[0] if entry.command else 0, ext=True))
+            return encode_necext(al, ah, cl, ch)
+        if proto == "NEC42":
+            return encode_nec42(a0, c0, ext=False)
+        if proto == "NEC42ext":
+            return encode_nec42(a0, c0, ext=True)
         if proto == "Samsung32":
-            return pulses_to_broadlink(encode_samsung32(entry.address[0] if entry.address else 0,
-                                                       entry.command[0] if entry.command else 0))
+            return encode_samsung32(a0, c0)
         if proto == "RC5":
-            return pulses_to_broadlink(encode_rc5(entry.address[0] if entry.address else 0,
-                                                  entry.command[0] if entry.command else 0, ext=False))
+            return encode_rc5(a0, c0, ext=False)
         if proto == "RC5X":
-            return pulses_to_broadlink(encode_rc5(entry.address[0] if entry.address else 0,
-                                                  entry.command[0] if entry.command else 0, ext=True))
+            return encode_rc5(a0, c0, ext=True)
         if proto == "SIRC":
-            return pulses_to_broadlink(encode_sirc(entry.address[0] if entry.address else 0,
-                                                  entry.command[0] if entry.command else 0, 12))
+            return encode_sirc(a0, c0, 12)
         if proto == "SIRC15":
-            return pulses_to_broadlink(encode_sirc(entry.address[0] if entry.address else 0,
-                                                  entry.command[0] if entry.command else 0, 15))
+            return encode_sirc(a0, c0, 15)
         if proto == "SIRC20":
-            return pulses_to_broadlink(encode_sirc(entry.address[0] if entry.address else 0,
-                                                  entry.command[0] if entry.command else 0, 20))
+            return encode_sirc(a0, c0, 20)
         if proto == "Kaseikyo":
             vendor = (entry.address[0] if len(entry.address) > 0 else 0) | \
                      ((entry.address[1] if len(entry.address) > 1 else 0) << 8)
             genre1 = entry.address[2] if len(entry.address) > 2 else 0
             genre2 = entry.address[3] if len(entry.address) > 3 else 0
-            cmd = entry.command[0] if entry.command else 0
-            return pulses_to_broadlink(encode_kaseikyo(vendor, genre1, genre2, cmd))
+            return encode_kaseikyo(vendor, genre1, genre2, c0)
     except Exception:
         return None
     return None
+
+
+def build_packet(entry: Entry) -> bytes | None:
+    pulses = entry_to_pulses(entry)
+    if pulses is None:
+        return None
+    return pulses_to_broadlink(pulses)
+
+
+def combine_pulse_sequences(sequences: list[list[int]], inter_gap_us: int) -> list[int]:
+    """Concatenate per-button pulse lists, replacing each button's natural
+    trailing space with the requested inter-button gap so the TV's IR
+    decoder sees distinct frames and the OSD has time to respond."""
+    combined: list[int] = []
+    for i, pulses in enumerate(sequences):
+        if i == len(sequences) - 1:
+            combined.extend(pulses)
+        else:
+            # Drop the trailing space; append the longer inter-button gap.
+            combined.extend(pulses[:-1])
+            combined.append(inter_gap_us)
+    return combined
 
 
 def _priority_rank(source: str) -> tuple[int, str]:
@@ -592,6 +605,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--remote", default="", help="Path to a single .ir file (absolute, or relative to --repo). Switches to single-remote mode.")
     ap.add_argument("--button", default="", help="With --remote: fire these buttons in order. Comma-separated, case-insensitive (e.g. 'Input,Down,Ok').")
     ap.add_argument("--button-gap", type=float, default=0.4, help="Seconds between sequential --button presses (default: 0.4).")
+    ap.add_argument("--combine", action="store_true", help="With --button X,Y,Z: emit ONE base64 Broadlink packet for the whole sequence (good for Home Assistant replay). Fires once against the RM if not --dry-run.")
     ap.add_argument("--list", action="store_true", help="With --remote: print the button list and exit.")
     args = ap.parse_args(argv)
     if args.remote:
@@ -632,6 +646,31 @@ def run_remote(args: argparse.Namespace) -> int:
             print("Available:", ", ".join(sorted({x.name for x in entries})), file=sys.stderr)
             return 1
         sequence.append(e)
+
+    if args.combine:
+        seqs: list[list[int]] = []
+        for e in sequence:
+            pulses = entry_to_pulses(e)
+            if pulses is None:
+                print(f"ERROR: could not encode {e.protocol} for button {e.name!r}", file=sys.stderr)
+                return 1
+            seqs.append(pulses)
+        combined = combine_pulse_sequences(seqs, inter_gap_us=int(args.button_gap * 1_000_000))
+        combined_packet = pulses_to_broadlink(combined)
+        b64 = base64.b64encode(combined_packet).decode()
+        label = "+".join(e.name for e in sequence)
+        print(f"Combined packet for [{label}] ({len(combined)} pulses, inter-press gap {args.button_gap:.2f}s)")
+        print(f"  b64:       {b64}")
+        print(f"  hex:       {combined_packet.hex()}")
+        print(f"  HA replay: service: remote.send_command / command: 'b64:{b64}'")
+        if args.dry_run:
+            return 0
+        print(f"\nConnecting to Broadlink at {args.ip} ...")
+        dev = connect_broadlink(args.ip)
+        print(f"Connected: {type(dev).__name__} host={dev.host[0]}")
+        dev.send_data(combined_packet)
+        print(f"Fired combined packet [{label}]")
+        return 0
 
     packets: list[tuple[Entry, bytes]] = []
     for e in sequence:
