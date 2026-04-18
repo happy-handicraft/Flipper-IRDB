@@ -11,9 +11,10 @@
 # convert these three entries accordingly by dropping the leading `-`,
 # removing the `id:` line, and promoting the id to the parent key.
 #
-# Replace `remote.rm4_mini` with the actual entity_id of your
-# Broadlink device (Settings -> Devices & services -> Broadlink ->
-# Entities).
+# entity_id is `remote.ir` (HA normalises entity_ids to lowercase even
+# when the friendly name is "IR"). Change this below if your Broadlink
+# device uses a different id (Settings -> Devices & services ->
+# Broadlink -> Entities).
 #
 # Regenerate any b64 string with:
 #   ./jvc_bruteforce.py --remote Strong/Strong_RCU-Z400N.ir \
@@ -25,7 +26,7 @@
   sequence:
     - service: remote.send_command
       target:
-        entity_id: remote.rm4_mini
+        entity_id: remote.ir
       data:
         command: "b64:JgBKAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERERERMxEzETMRERERERERMxEzERERERERETMRMxEzEQAEwg0F"
 
@@ -35,7 +36,7 @@
   sequence:
     - service: remote.send_command
       target:
-        entity_id: remote.rm4_mini
+        entity_id: remote.ir
       data:
         command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzEREREREzETMREREzEREREREzETMRERERETMREREzEQAEwg0F"
 
@@ -45,6 +46,6 @@
   sequence:
     - service: remote.send_command
       target:
-        entity_id: remote.rm4_mini
+        entity_id: remote.ir
       data:
         command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzERERERERETMREREzEREREREzETMRMxERETMREREzEQAEwg0F"
