@@ -4,10 +4,12 @@
 # via the jvc_bruteforce.py sweep and single-handedly drives this
 # Vestel-chassis DSG-JVC 2016 TV.
 #
-# This file is in the scripts.yaml form (bare script IDs at root).
-# Paste into ~/.homeassistant/scripts.yaml.
-# If your configuration.yaml inlines scripts directly, wrap everything
-# below in a top-level `script:` key and indent one more level.
+# This file uses the LIST form (entries start with `- id:`), which is
+# what UI-created scripts use and what HA's schema validator expects
+# when scripts.yaml already contains UI-managed scripts. If your
+# scripts.yaml is entirely in DICT form instead (bare ids as keys),
+# convert these three entries accordingly by dropping the leading `-`,
+# removing the `id:` line, and promoting the id to the parent key.
 #
 # Replace `remote.rm4_mini` with the actual entity_id of your
 # Broadlink device (Settings -> Devices & services -> Broadlink ->
@@ -17,7 +19,7 @@
 #   ./jvc_bruteforce.py --remote Strong/Strong_RCU-Z400N.ir \
 #       --button <Name> --combine --dry-run
 
-tv_power:
+- id: tv_power
   alias: "TV: Power"
   icon: mdi:power
   sequence:
@@ -27,7 +29,7 @@ tv_power:
       data:
         command: "b64:JgBKAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERERERMxEzETMRERERERERMxEzERERERERETMRMxEzEQAEwg0F"
 
-tv_source_up:
+- id: tv_source_up
   alias: "TV: Source list - Up"
   icon: mdi:menu-up
   sequence:
@@ -37,7 +39,7 @@ tv_source_up:
       data:
         command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzEREREREzETMREREzEREREREzETMRERERETMREREzEQAEwg0F"
 
-tv_source_down:
+- id: tv_source_down
   alias: "TV: Source list - Down"
   icon: mdi:menu-down
   sequence:
