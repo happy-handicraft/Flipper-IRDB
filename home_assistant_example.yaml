@@ -4,7 +4,12 @@
 # via the jvc_bruteforce.py sweep and single-handedly drives this
 # Vestel-chassis DSG-JVC 2016 TV.
 #
-# Replace `remote.rm4_mini` below with the actual entity_id of your
+# This file is in the scripts.yaml form (bare script IDs at root).
+# Paste into ~/.homeassistant/scripts.yaml.
+# If your configuration.yaml inlines scripts directly, wrap everything
+# below in a top-level `script:` key and indent one more level.
+#
+# Replace `remote.rm4_mini` with the actual entity_id of your
 # Broadlink device (Settings -> Devices & services -> Broadlink ->
 # Entities).
 #
@@ -12,34 +17,32 @@
 #   ./jvc_bruteforce.py --remote Strong/Strong_RCU-Z400N.ir \
 #       --button <Name> --combine --dry-run
 
-script:
+tv_power:
+  alias: "TV: Power"
+  icon: mdi:power
+  sequence:
+    - service: remote.send_command
+      target:
+        entity_id: remote.rm4_mini
+      data:
+        command: "b64:JgBKAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERERERMxEzETMRERERERERMxEzERERERERETMRMxEzEQAEwg0F"
 
-  tv_power:
-    alias: "TV: Power"
-    icon: mdi:power
-    sequence:
-      - service: remote.send_command
-        target:
-          entity_id: remote.rm4_mini
-        data:
-          command: "b64:JgBKAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERERERMxEzETMRERERERERMxEzERERERERETMRMxEzEQAEwg0F"
+tv_source_up:
+  alias: "TV: Source list - Up"
+  icon: mdi:menu-up
+  sequence:
+    - service: remote.send_command
+      target:
+        entity_id: remote.rm4_mini
+      data:
+        command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzEREREREzETMREREzEREREREzETMRERERETMREREzEQAEwg0F"
 
-  tv_source_up:
-    alias: "TV: Source list - Up"
-    icon: mdi:menu-up
-    sequence:
-      - service: remote.send_command
-        target:
-          entity_id: remote.rm4_mini
-        data:
-          command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzEREREREzETMREREzEREREREzETMRERERETMREREzEQAEwg0F"
-
-  tv_source_down:
-    alias: "TV: Source list - Down"
-    icon: mdi:menu-down
-    sequence:
-      - service: remote.send_command
-        target:
-          entity_id: remote.rm4_mini
-        data:
-          command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzERERERERETMREREzEREREREzETMRMxERETMREREzEQAEwg0F"
+tv_source_down:
+  alias: "TV: Source list - Down"
+  icon: mdi:menu-down
+  sequence:
+    - service: remote.send_command
+      target:
+        entity_id: remote.rm4_mini
+      data:
+        command: "b64:JgCSAAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMRERERETMREREzETMRERERERERMxERETMRERERETMRMxEzEQAvlAABEokRERERERERERERETMREREzETMRMxEzETMRMxERETMREREzERERERERETMREREzEREREREzETMRMxERETMREREzEQAEwg0F"
