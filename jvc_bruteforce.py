@@ -496,6 +496,25 @@ def run_sweep(args: argparse.Namespace) -> int:
         print("Nothing to fire.", file=sys.stderr)
         return 1
 
+    if args.only:
+        keep: set[int] = set()
+        for piece in args.only.split(","):
+            piece = piece.strip()
+            if not piece:
+                continue
+            if "-" in piece:
+                a, b = piece.split("-", 1)
+                for i in range(int(a), int(b) + 1):
+                    keep.add(i)
+            else:
+                keep.add(int(piece))
+        original = candidates
+        candidates = [c for i, c in enumerate(original, 1) if i in keep]
+        print(f"Filtered to {len(candidates)} candidates via --only={args.only!r}")
+        if not candidates:
+            print("No candidates match --only.", file=sys.stderr)
+            return 1
+
     log_path = os.path.expanduser(args.log)
     log_f = open(log_path, "a", buffering=1)
     log_f.write(f"# === SWEEP START {dt.datetime.now().isoformat()} repo={args.repo} regex={args.regex!r} ===\n")
@@ -534,9 +553,20 @@ def run_sweep(args: argparse.Namespace) -> int:
                     break
                 if r + 1 < args.repeats:
                     time.sleep(args.repeat_gap)
-            deadline = time.time() + args.delay
-            while time.time() < deadline and not _STOP:
-                time.sleep(min(0.1, deadline - time.time()))
+            if args.confirm:
+                ans = input("    Did the TV react? [y/N/q] ").strip().lower()
+                log_f.write(f"# CONFIRM\t{idx}\t{c.label}\t{ans}\n")
+                if ans == "y":
+                    print(f"\nWINNER: {c.label}  ({c.detail})")
+                    print(f"  b64: {base64.b64encode(c.packet).decode()}")
+                    break
+                if ans == "q":
+                    print("Stopped.")
+                    break
+            else:
+                deadline = time.time() + args.delay
+                while time.time() < deadline and not _STOP:
+                    time.sleep(min(0.1, deadline - time.time()))
 
     elapsed = time.time() - start
     log_f.write(f"# === SWEEP_END {dt.datetime.now().isoformat()} elapsed={elapsed:.1f}s ===\n")
@@ -557,6 +587,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--regex", default=DEFAULT_REGEX, help=f"Name regex (default: {DEFAULT_REGEX!r})")
     ap.add_argument("--log", default=DEFAULT_LOG, help=f"Log path (default: {DEFAULT_LOG})")
     ap.add_argument("--dry-run", action="store_true", help="Parse, encode, and log but don't transmit.")
+    ap.add_argument("--only", default="", help="Fire only these candidates. Comma-separated 1-based indices and/or ranges (e.g. '80-84' or '3,17,81-84').")
+    ap.add_argument("--confirm", action="store_true", help="After each fire, prompt [y/N/q] for whether the TV reacted.")
     args = ap.parse_args(argv)
     return run_sweep(args)
 
